@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dreiecke Trainieren</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f7f7f7;
+  }
+  canvas {
+    border: 1px solid black;
+    margin-top: 20px;
+  }
+  .input-field {
+    margin-top: 20px;
+    padding: 10px;
+    border: 2px solid #FFD700; /* Goldene Farbe */
+    border-radius: 5px;
+    font-size: 16px;
+  }
+  #trainButton {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    background-color: #FFD700; /* Goldene Farbe */
+    color: #333;
+    cursor: pointer;
+  }
+  #trainButton:hover {
+    background-color: #FFA500; /* Dunklere goldene Farbe beim Hover */
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas" width="320" height="320"></canvas>
+<input type="number" id="angleInput" class="input-field" placeholder="Winkel eingeben..." min="0" max="180">
+<button id="trainButton">Trainiere Modell</button>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const size = 320; // Größe des Canvas
+let trainingsDaten = [];
+let trainingsLabels = [];
+
+// TensorFlow.js Modell initialisieren
+const modell = tf.sequential();
+modell.add(tf.layers.dense({units: 1, inputShape: [6]}));
+modell.compile({
+  loss: 'meanSquaredError',
+  optimizer: 'sgd'
+});
+
+// Funktion zum Zeichnen eines zufälligen Dreiecks und Sammeln von Benutzereingaben
+function drawRandomTriangle() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Generiere drei zufällige Punkte
+  const points = [...Array(3)].map(() => ({
+    x: Math.random() * size,
+    y: Math.random() * size
+  }));
+
+  // Zeichne das Dreieck
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  points.forEach(point => ctx.lineTo(point.x, point.y));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Warte auf Benutzereingabe, bevor Daten gesammelt werden
+  document.getElementById('angleInput').addEventListener('change', (event) => {
+    const userAngle = parseFloat(event.target.value);
+    if (userAngle && userAngle >= 0 && userAngle <= 180) {
+      const triangleData = points.flat();
+      trainingsDaten.push(triangleData);
+      trainingsLabels.push(userAngle);
+      event.target.value = ''; // Eingabefeld zurücksetzen
+    } else {
+      alert('Bitte geben Sie einen gültigen Winkel zwischen 0 und 180 ein.');
+    }
+  });
+}
+
+// Funktion zum Trainieren des Modells
+async function trainiereModell() {
+  if (trainingsDaten.length > 0) {
+    const xs = tf.tensor2d(trainingsDaten);
+    const ys = tf.tensor1d(trainingsLabels);
+    await modell.fit(xs, ys, {
+      epochs: 100
+    });
+    console.log('Modell ist trainiert.');
+  } else {
+    console.error('Keine Daten zum Trainieren vorhanden.');
+  }
+}
+
+// Event-Listener für das Canvas
+canvas.addEventListener('click', drawRandomTriangle);
+
+// Event-Listener für den Trainingsbutton
+document.getElementById('trainButton').addEventListener('click', trainiereModell);
+</script>
+</body>
+</html>
